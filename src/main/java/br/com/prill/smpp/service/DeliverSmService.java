@@ -10,7 +10,6 @@ import com.cloudhopper.smpp.pdu.SubmitSm;
 import com.cloudhopper.smpp.type.RecoverablePduException;
 import com.cloudhopper.smpp.type.SmppChannelException;
 import com.cloudhopper.smpp.type.SmppTimeoutException;
-import com.cloudhopper.smpp.type.UnrecoverablePduException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;

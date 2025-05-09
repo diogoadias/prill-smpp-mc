@@ -3,21 +3,16 @@ package br.com.prill.smpp.manager;
 import br.com.prill.smpp.kafka.service.KafkaProducerService;
 import br.com.prill.smpp.service.DeliverSmService;
 import br.com.prill.smpp.service.SubmitSmservice;
-
 import com.cloudhopper.smpp.SmppConstants;
 import com.cloudhopper.smpp.SmppServerHandler;
 import com.cloudhopper.smpp.SmppServerSession;
 import com.cloudhopper.smpp.SmppSessionConfiguration;
 import com.cloudhopper.smpp.impl.DefaultSmppSessionHandler;
-
-import com.cloudhopper.smpp.pdu.BaseBind;
-import com.cloudhopper.smpp.pdu.BaseBindResp;
-import com.cloudhopper.smpp.pdu.PduRequest;
-import com.cloudhopper.smpp.pdu.PduResponse;
-import com.cloudhopper.smpp.pdu.SubmitSm;
-import com.cloudhopper.smpp.type.SmppProcessingException;
+import com.cloudhopper.smpp.pdu.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.jsmpp.SMPPConstant;
+import org.jsmpp.extra.ProcessRequestException;
+
 
 @Slf4j
 public class SMSCServerManager implements SmppServerHandler {
@@ -37,18 +32,25 @@ public class SMSCServerManager implements SmppServerHandler {
         this.transmitterTopic = transmitterTopic;
     }
 
-    @Override
-    public void sessionBindRequested(Long sessionId, SmppSessionConfiguration sessionConfiguration, BaseBind bindRequest) throws SmppProcessingException {
 
-        if (bindRequest.getPassword() == null || !password.equals(bindRequest.getPassword())) {
-            throw new SmppProcessingException(SmppConstants.STATUS_INVPASWD);
+    @Override
+    public void sessionBindRequested(Long sessionId, SmppSessionConfiguration smppSessionConfiguration, BaseBind baseBind) {
+        if (baseBind.getPassword() == null || !password.equals(baseBind.getPassword())) {
+            log.warn("Invalid password: systemId={}", baseBind.getSystemId());
+            try {
+                throw new ProcessRequestException("Invalid password", SMPPConstant.STAT_ESME_RBINDFAIL);
+            } catch (ProcessRequestException e) {
+                throw new RuntimeException(e);
+            }
         }
-        log.info("Bind requested: sessionId={}, bindType={}", sessionId, bindRequest.getClass().getSimpleName());
+
+        log.info("Bind success: systemId={}", baseBind.getSystemId());
+
     }
 
     @Override
-    public void sessionCreated(Long sessionId, SmppServerSession session, BaseBindResp preparedBindResponse) throws SmppProcessingException {
-        log.info("Session created: {}", session.getConfiguration().getSystemId());
+    public void sessionCreated(Long sessionId, SmppServerSession session, BaseBindResp baseBindResp)  {
+
         SmppSessionManager.addSession(session.getConfiguration().getSystemId(), session);
         session.serverReady(new DefaultSmppSessionHandler() {
             @Override
@@ -73,6 +75,7 @@ public class SMSCServerManager implements SmppServerHandler {
                 }
             }
         });
+
     }
 
     @Override

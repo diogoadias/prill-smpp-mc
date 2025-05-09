@@ -1,5 +1,6 @@
 package br.com.prill.smpp.kafka.service;
 
+import br.com.prill.smpp.dto.SubmitSmDTO;
 import com.cloudhopper.smpp.pdu.SubmitSm;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,7 +38,16 @@ public class KafkaProducerService {
 
     public void process(String topic, SubmitSm message) {
         try {
-            String jsonMessage = new ObjectMapper().writeValueAsString(message);
+            SubmitSmDTO submitSmDTO = new SubmitSmDTO(
+                    message.getSourceAddress().getAddress(),
+                    message.getDestAddress().getAddress(),
+                    new String(message.getShortMessage()),
+                    message.getDataCoding(),
+                    message.getEsmClass(),
+                    message.getPriority(),
+                    message.getServiceType()
+            );
+            String jsonMessage = new ObjectMapper().writeValueAsString(submitSmDTO);
             sendMessage(topic, jsonMessage);
         } catch (JsonProcessingException e) {
             log.error("Erro ao converter mensagem para JSON: {}", e.getMessage());

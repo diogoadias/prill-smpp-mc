@@ -11,7 +11,8 @@ public class SubmitSmservice {
 
     public SubmitSmResp processSubmitSm(SubmitSm submitSm) {
         String message = new String(submitSm.getShortMessage());
-        log.info("Received SMS from {} to {}: {}", submitSm.getSourceAddress(), submitSm.getDestAddress(), message);
+        log.info("Received SMS from {} to {}: {}", submitSm.getSourceAddress().getAddress(), submitSm.getDestAddress().getAddress(), message);
+
         SubmitSmResp response = submitSm.createResponse();
         response.setMessageId("msg-" + System.currentTimeMillis());
         return response;
