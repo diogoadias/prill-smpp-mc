@@ -12,6 +12,8 @@ import com.cloudhopper.smpp.type.SmppChannelException;
 import com.cloudhopper.smpp.type.SmppTimeoutException;
 import com.cloudhopper.smpp.type.UnrecoverablePduException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +24,11 @@ import java.util.concurrent.CompletableFuture;
 public class DeliverSmService {
 
     @Async
+    @Retryable(
+            retryFor = {SmppTimeoutException.class, RecoverablePduException.class, SmppChannelException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 2000)
+    )
     public void processDeliverSm(SubmitSm submitSm) {
 
         DeliverSm deliverSm;
@@ -46,15 +53,12 @@ public class DeliverSmService {
                         } else {
                             log.error("Failed to send DeliverSm to receiver: {}", deliverSm.getDestAddress().getAddress(), future.getCause());
                         }
-                    } catch (SmppTimeoutException | RecoverablePduException | UnrecoverablePduException | SmppChannelException e) {
-                        log.error("Error processing DeliverSm: {}. \nError message: {}", deliverSm.getDestAddress().getAddress(), e.getMessage());
-                    } catch (InterruptedException e) {
-                        log.error("Interrupted thread error processing DeliverSm: {}. \nError message: {}", deliverSm.getDestAddress().getAddress(), e.getMessage());
-                        Thread.currentThread().interrupt();
+                    } catch (Exception e) {
+                        log.error("Error to processing DeliverSm: {}. \nError message: {}", deliverSm.getDestAddress().getAddress(), e.getMessage());
                     }
                 });
             } else {
-                log.error("No active session for receiver: {}", submitSm.getDestAddress().getAddress());
+                log.error("No active session for receiver: {}", deliverSm.getDestAddress().getAddress());
             }
 
         } catch (Exception e) {

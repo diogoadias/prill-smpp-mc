@@ -1,5 +1,6 @@
 package br.com.prill.smpp.component;
 
+import br.com.prill.smpp.kafka.service.KafkaProducerService;
 import br.com.prill.smpp.manager.SMSCServerManager;
 import br.com.prill.smpp.service.DeliverSmService;
 import br.com.prill.smpp.service.SubmitSmservice;
@@ -8,6 +9,7 @@ import com.cloudhopper.smpp.SmppServerConfiguration;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +28,12 @@ public class SmppServerComponent {
     @Value("${smpp.server.password}")
     String password;
 
+    @Value("${spring.kafka.producer.topic}")
+    String transmitterTopic;
+
+    @Autowired
+    KafkaProducerService kafkaProducerService;
+
     @PostConstruct
     public void start() {
         try {
@@ -34,7 +42,7 @@ public class SmppServerComponent {
             config.setMaxConnectionSize(maxConnectionSize);
             config.setNonBlockingSocketsEnabled(true);
 
-            smppServer = new DefaultSmppServer(config, new SMSCServerManager(new DeliverSmService(), new SubmitSmservice(), password));
+            smppServer = new DefaultSmppServer(config, new SMSCServerManager(new DeliverSmService(), new SubmitSmservice(), kafkaProducerService, password, transmitterTopic));
             smppServer.start();
             log.info("SMPP Server started on port {}", config.getPort());
         } catch (Exception e) {

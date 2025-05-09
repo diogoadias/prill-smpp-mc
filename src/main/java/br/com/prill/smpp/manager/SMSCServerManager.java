@@ -1,5 +1,6 @@
 package br.com.prill.smpp.manager;
 
+import br.com.prill.smpp.kafka.service.KafkaProducerService;
 import br.com.prill.smpp.service.DeliverSmService;
 import br.com.prill.smpp.service.SubmitSmservice;
 
@@ -15,20 +16,25 @@ import com.cloudhopper.smpp.pdu.PduRequest;
 import com.cloudhopper.smpp.pdu.PduResponse;
 import com.cloudhopper.smpp.pdu.SubmitSm;
 import com.cloudhopper.smpp.type.SmppProcessingException;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
 public class SMSCServerManager implements SmppServerHandler {
 
     private final DeliverSmService deliverSmService;
     private final SubmitSmservice submitSmservice;
+    private final KafkaProducerService kafkaProducerService;
     private final String password;
+    private final String transmitterTopic;
 
-    public SMSCServerManager(DeliverSmService deliverSmService, SubmitSmservice submitSmservice, String password) {
+
+    public SMSCServerManager(DeliverSmService deliverSmService, SubmitSmservice submitSmservice, KafkaProducerService kafkaProducerService, String password, String transmitterTopic) {
         this.deliverSmService = deliverSmService;
         this.submitSmservice = submitSmservice;
+        this.kafkaProducerService = kafkaProducerService;
         this.password = password;
+        this.transmitterTopic = transmitterTopic;
     }
 
     @Override
@@ -50,6 +56,7 @@ public class SMSCServerManager implements SmppServerHandler {
                 if (pduRequest.getCommandId() == SmppConstants.CMD_ID_SUBMIT_SM) {
                     SubmitSm submitSm = (SubmitSm) pduRequest;
                     deliverSmService.processDeliverSm(submitSm);
+                    kafkaProducerService.process(transmitterTopic, submitSm);
                     return submitSmservice.processSubmitSm(submitSm);
                 } else if (pduRequest.getCommandId() == SmppConstants.CMD_ID_SUBMIT_MULTI) {
                     log.warn("SubmitMulti request received but not supported");
