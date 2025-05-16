@@ -1,5 +1,8 @@
 package br.com.prill.smpp.dto;
 
+import com.cloudhopper.smpp.pdu.SubmitSm;
+
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
@@ -12,11 +15,10 @@ import lombok.Setter;
 @Setter
 @Getter
 public class SubmitSmDTO {
-    private String sourceAddress;
-    private String destinationAddress;
-    private String shortMessage;
-    private byte dataCoding;
-    private byte esmClass;
-    private byte priorityFlag;
-    private String serviceType;
+
+    private String eventId;
+
+    @JsonSerialize(using = SubmitSmSerializer.class)
+    private SubmitSm submitSm;
+
 }

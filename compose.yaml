@@ -1,0 +1,11 @@
+services:
+  smpp-mc:
+    container_name: smpp-mc
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "2775:2775"
+    networks:
+        - backend

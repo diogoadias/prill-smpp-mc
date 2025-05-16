@@ -1,35 +1,47 @@
 package br.com.prill.smpp.manager;
 
+import br.com.prill.smpp.entity.TransmitterEvent;
 import br.com.prill.smpp.kafka.service.KafkaProducerService;
+import br.com.prill.smpp.repository.TransmitterEventRepository;
 import br.com.prill.smpp.service.DeliverSmService;
-import br.com.prill.smpp.service.SubmitSmservice;
+import br.com.prill.smpp.service.SubmitSmService;
+import br.com.prill.smpp.service.TransmitterEventService;
 import com.cloudhopper.smpp.SmppConstants;
 import com.cloudhopper.smpp.SmppServerHandler;
 import com.cloudhopper.smpp.SmppServerSession;
 import com.cloudhopper.smpp.SmppSessionConfiguration;
 import com.cloudhopper.smpp.impl.DefaultSmppSessionHandler;
 import com.cloudhopper.smpp.pdu.*;
+import com.cloudhopper.smpp.tlv.Tlv;
 import lombok.extern.slf4j.Slf4j;
 import org.jsmpp.SMPPConstant;
 import org.jsmpp.extra.ProcessRequestException;
 
+import java.nio.charset.StandardCharsets;
 
 @Slf4j
 public class SMSCServerManager implements SmppServerHandler {
 
     private final DeliverSmService deliverSmService;
-    private final SubmitSmservice submitSmservice;
+    private final SubmitSmService submitSmservice;
     private final KafkaProducerService kafkaProducerService;
     private final String password;
     private final String transmitterTopic;
+    private final TransmitterEventService transmitterEventService;
 
-
-    public SMSCServerManager(DeliverSmService deliverSmService, SubmitSmservice submitSmservice, KafkaProducerService kafkaProducerService, String password, String transmitterTopic) {
+    public SMSCServerManager(DeliverSmService deliverSmService,
+                             SubmitSmService submitSmservice,
+                             KafkaProducerService kafkaProducerService,
+                             String password,
+                             String transmitterTopic,
+                             TransmitterEventService transmitterEventService
+                            ) {
         this.deliverSmService = deliverSmService;
         this.submitSmservice = submitSmservice;
         this.kafkaProducerService = kafkaProducerService;
         this.password = password;
         this.transmitterTopic = transmitterTopic;
+        this.transmitterEventService = transmitterEventService;
     }
 
 
@@ -57,9 +69,13 @@ public class SMSCServerManager implements SmppServerHandler {
             public PduResponse firePduRequestReceived(PduRequest pduRequest) {
                 if (pduRequest.getCommandId() == SmppConstants.CMD_ID_SUBMIT_SM) {
                     SubmitSm submitSm = (SubmitSm) pduRequest;
+                    SubmitSmResp submitSmResp = submitSmservice.processSubmitSm(submitSm);
+                    submitSm.addOptionalParameter(new Tlv((short) 0x001E, submitSmResp.getMessageId().getBytes(StandardCharsets.UTF_8)));
                     deliverSmService.processDeliverSm(submitSm);
-                    kafkaProducerService.process(transmitterTopic, submitSm);
-                    return submitSmservice.processSubmitSm(submitSm);
+                    kafkaProducerService.process(transmitterTopic,submitSmResp, submitSm);
+                    transmitterEventService.saveMessage(submitSmResp, submitSm);
+
+                    return submitSmResp;
                 } else if (pduRequest.getCommandId() == SmppConstants.CMD_ID_SUBMIT_MULTI) {
                     log.warn("SubmitMulti request received but not supported");
                     throw new IllegalStateException("SubmitMulti not supported");

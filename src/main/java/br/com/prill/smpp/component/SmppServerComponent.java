@@ -3,7 +3,8 @@ package br.com.prill.smpp.component;
 import br.com.prill.smpp.kafka.service.KafkaProducerService;
 import br.com.prill.smpp.manager.SMSCServerManager;
 import br.com.prill.smpp.service.DeliverSmService;
-import br.com.prill.smpp.service.SubmitSmservice;
+import br.com.prill.smpp.service.SubmitSmService;
+import br.com.prill.smpp.service.TransmitterEventService;
 import com.cloudhopper.smpp.impl.DefaultSmppServer;
 import com.cloudhopper.smpp.SmppServerConfiguration;
 import jakarta.annotation.PostConstruct;
@@ -34,6 +35,9 @@ public class SmppServerComponent {
     @Autowired
     KafkaProducerService kafkaProducerService;
 
+    @Autowired
+    TransmitterEventService transmitterEventService;
+
     @PostConstruct
     public void start() {
         try {
@@ -42,7 +46,13 @@ public class SmppServerComponent {
             config.setMaxConnectionSize(maxConnectionSize);
             config.setNonBlockingSocketsEnabled(true);
 
-            smppServer = new DefaultSmppServer(config, new SMSCServerManager(new DeliverSmService(), new SubmitSmservice(), kafkaProducerService, password, transmitterTopic));
+            smppServer = new DefaultSmppServer(config, new SMSCServerManager(new DeliverSmService(),
+                    new SubmitSmService(),
+                    kafkaProducerService,
+                    password,
+                    transmitterTopic,
+                    transmitterEventService
+                   ));
             smppServer.start();
             log.info("SMPP Server started on port {}", config.getPort());
         } catch (Exception e) {
